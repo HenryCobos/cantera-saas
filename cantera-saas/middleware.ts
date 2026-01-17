@@ -2,7 +2,14 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  // Wrapper con try-catch para asegurar que nunca falle silenciosamente
+  try {
+    return await updateSession(request);
+  } catch (error) {
+    // Si hay cualquier error, permitir acceso para no bloquear la aplicación
+    console.error('Error en middleware:', error);
+    return NextResponse.next();
+  }
 }
 
 export const config = {

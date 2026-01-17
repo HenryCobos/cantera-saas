@@ -7,11 +7,19 @@ export async function updateSession(request: NextRequest) {
   
   // CRÍTICO: Rutas públicas deben retornar inmediatamente sin hacer NADA
   // Esto es más confiable que confiar en el matcher regex
+  // Usar try-catch como medida de seguridad extrema
   const publicRoutes = ['/', '/precios', '/auth/login', '/auth/register'];
   if (publicRoutes.includes(pathname)) {
-    // Retornar NextResponse.next() inmediatamente para rutas públicas
-    // NO crear ningún cliente de Supabase ni hacer ninguna verificación
-    return NextResponse.next({ request });
+    try {
+      // Retornar NextResponse.next() inmediatamente para rutas públicas
+      // NO crear ningún cliente de Supabase ni hacer ninguna verificación
+      // Usar NextResponse.next() sin parámetros para máxima compatibilidad
+      return NextResponse.next();
+    } catch (error) {
+      // Si hay cualquier error para rutas públicas, permitir acceso
+      console.error('Error en middleware para ruta pública:', error);
+      return NextResponse.next();
+    }
   }
 
   // Para rutas protegidas, verificar autenticación
