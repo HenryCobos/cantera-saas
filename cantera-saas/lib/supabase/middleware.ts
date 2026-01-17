@@ -3,24 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { Database } from './database.types';
 
 export async function updateSession(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-  
-  // CRÍTICO: Rutas públicas deben retornar inmediatamente sin hacer NADA
-  // Esto es más confiable que confiar en el matcher regex
-  // Usar try-catch como medida de seguridad extrema
-  const publicRoutes = ['/', '/precios', '/auth/login', '/auth/register'];
-  if (publicRoutes.includes(pathname)) {
-    try {
-      // Retornar NextResponse.next() inmediatamente para rutas públicas
-      // NO crear ningún cliente de Supabase ni hacer ninguna verificación
-      // Usar NextResponse.next() sin parámetros para máxima compatibilidad
-      return NextResponse.next();
-    } catch (error) {
-      // Si hay cualquier error para rutas públicas, permitir acceso
-      console.error('Error en middleware para ruta pública:', error);
-      return NextResponse.next();
-    }
-  }
+  // NOTA: Esta función solo se ejecuta para rutas protegidas (/dashboard/:path*)
+  // Las rutas públicas (/, /precios, /auth/login, /auth/register) están excluidas
+  // del matcher en middleware.ts, por lo que nunca llegan aquí.
 
   // Para rutas protegidas, verificar autenticación
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

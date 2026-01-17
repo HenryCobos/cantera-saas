@@ -2,12 +2,8 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  // CRÍTICO: Verificar ANTES de cualquier otra cosa si es la ruta root
-  // Si es '/', retornar inmediatamente sin hacer nada más
-  const pathname = request.nextUrl.pathname;
-  if (pathname === '/') {
-    return NextResponse.next();
-  }
+  // NOTA: El matcher solo incluye /dashboard/:path*, por lo que esta función
+  // solo se ejecuta para rutas protegidas. Las rutas públicas nunca llegan aquí.
 
   // Wrapper con try-catch para asegurar que nunca falle silenciosamente
   try {
