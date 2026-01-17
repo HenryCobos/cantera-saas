@@ -168,6 +168,10 @@ CREATE TRIGGER trigger_update_subscriptions_updated_at
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_history ENABLE ROW LEVEL SECURITY;
 
+-- Eliminar políticas existentes si existen (para hacer el script idempotente)
+DROP POLICY IF EXISTS "Users can view subscriptions in own organization" ON subscriptions;
+DROP POLICY IF EXISTS "Users can view subscription history in own organization" ON subscription_history;
+
 -- Política: Los usuarios pueden ver suscripciones de su organización
 CREATE POLICY "Users can view subscriptions in own organization" ON subscriptions
   FOR SELECT USING (

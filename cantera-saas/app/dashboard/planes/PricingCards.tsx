@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { PLANS, formatPrice, getYearlyDiscount } from '@/lib/plans';
 import type { PlanType } from '@/lib/plans';
+import { useAuth } from '@/hooks/useAuth';
+import { generateHotmartCheckoutUrl, HOTMART_OFF_TO_PLAN } from '@/lib/hotmart-config';
 
 interface PricingCardsProps {
   currentPlan: PlanType;
@@ -11,6 +14,71 @@ interface PricingCardsProps {
 
 export default function PricingCards({ currentPlan, billingPeriod }: PricingCardsProps) {
   const plans = Object.values(PLANS);
+  const { profile, loading: authLoading } = useAuth();
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+
+  const handlePurchase = async (plan: typeof PLANS[PlanType]) => {
+    // No permitir comprar el plan actual
+    if (plan.id === currentPlan) {
+      return;
+    }
+
+    // No permitir comprar el plan free
+    if (plan.id === 'free') {
+      return;
+    }
+
+    // Verificar que el usuario esté autenticado
+    if (!profile?.email) {
+      alert('Debes estar autenticado para comprar un plan. Por favor, inicia sesión.');
+      return;
+    }
+
+    // Verificar que haya códigos de oferta configurados
+    const offCodes = Object.keys(HOTMART_OFF_TO_PLAN);
+    if (offCodes.length === 0) {
+      alert('Los planes aún no están configurados. Por favor, contacta al administrador.');
+      return;
+    }
+
+    // Verificar que el plan y período de facturación estén disponibles
+    const isAvailable = offCodes.some(off => {
+      const mapping = HOTMART_OFF_TO_PLAN[off];
+      return mapping?.plan === plan.id && mapping?.billingPeriod === billingPeriod;
+    });
+
+    if (!isAvailable) {
+      alert(`El plan ${plan.name} (${billingPeriod === 'monthly' ? 'mensual' : 'anual'}) aún no está disponible en Hotmart. Por favor, contacta al administrador.`);
+      return;
+    }
+
+    try {
+      setLoadingPlanId(plan.id);
+
+      // Generar URL de checkout de Hotmart
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      const returnUrl = `${appUrl}/dashboard/planes/success`;
+      const cancelUrl = `${appUrl}/dashboard/planes/cancel`;
+      
+      // Obtener organization_id si está disponible en el perfil
+      const organizationId = (profile as any)?.organization_id as string | undefined;
+      
+      const checkoutUrl = generateHotmartCheckoutUrl(
+        plan.id as 'starter' | 'profesional' | 'business',
+        billingPeriod,
+        profile.email,
+        returnUrl,
+        organizationId
+      );
+
+      // Redirigir a Hotmart
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error('Error al generar URL de Hotmart:', error);
+      alert('Error al procesar la compra. Por favor, intenta de nuevo.');
+      setLoadingPlanId(null);
+    }
+  };
 
   return (
     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -84,18 +152,33 @@ export default function PricingCards({ currentPlan, billingPeriod }: PricingCard
                 )}
               </div>
               <button
-                disabled={isCurrentPlan}
+                disabled={isCurrentPlan || plan.id === 'free' || authLoading || loadingPlanId === plan.id}
+                onClick={() => handlePurchase(plan)}
                 className={`block w-full text-center py-3 px-4 rounded-lg font-semibold transition-colors ${
                   isCurrentPlan
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : plan.popular
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:hover:bg-blue-600'
                     : plan.id === 'free'
-                    ? 'bg-gray-900 text-white hover:bg-gray-800'
-                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                    ? 'bg-gray-900 text-white hover:bg-gray-800 cursor-default'
+                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:opacity-50'
                 }`}
               >
-                {isCurrentPlan ? 'Plan Actual' : plan.id === 'free' ? 'Plan Gratis' : 'Contactar Ventas'}
+                {loadingPlanId === plan.id ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Redirigiendo...
+                  </span>
+                ) : isCurrentPlan ? (
+                  'Plan Actual'
+                ) : plan.id === 'free' ? (
+                  'Plan Gratis'
+                ) : (
+                  `Comprar ${billingPeriod === 'monthly' ? 'Mensual' : 'Anual'}`
+                )}
               </button>
             </div>
             <div className="border-t border-gray-200 px-6 py-6 bg-gray-50">
@@ -108,10 +191,10 @@ export default function PricingCards({ currentPlan, billingPeriod }: PricingCard
                 ))}
               </ul>
             </div>
-            {plan.id !== 'free' && (
+            {plan.id !== 'free' && Object.keys(HOTMART_OFF_TO_PLAN).length === 0 && (
               <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
                 <p className="text-xs text-gray-500 text-center">
-                  * Integración con Hotmart próximamente
+                  * Configuración pendiente
                 </p>
               </div>
             )}

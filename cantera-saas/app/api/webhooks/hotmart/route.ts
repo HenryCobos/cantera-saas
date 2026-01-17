@@ -86,12 +86,21 @@ export async function POST(request: NextRequest) {
         const buyerEmail = eventData.data?.buyer?.email || eventData.data?.buyer_email || eventData.buyer_email;
         const subscriptionId = eventData.data?.subscription?.id || eventData.data?.subscription_id || eventData.subscription_id;
         
-        // Obtener el plan correspondiente
-        const planInfo = getPlanFromHotmartProduct(productId || '');
+        // Obtener el precio pagado (importante para identificar el plan cuando Product ID es el mismo)
+        const priceValue = eventData.data?.purchase?.price?.value || 
+                          eventData.data?.purchase?.price ||
+                          eventData.data?.price?.value ||
+                          eventData.data?.price ||
+                          eventData.price?.value ||
+                          eventData.price;
+        
+        // Obtener el plan correspondiente (usando Product ID y precio)
+        const planInfo = getPlanFromHotmartProduct(productId || '', priceValue, eventData);
         if (!planInfo.plan) {
-          console.error(`No se pudo determinar el plan para product_id: ${productId}`);
+          console.error(`No se pudo determinar el plan para product_id: ${productId}, price: ${priceValue}`);
+          console.error('Webhook data:', JSON.stringify(eventData, null, 2));
           return NextResponse.json(
-            { error: 'Unknown product ID' },
+            { error: 'Unknown product ID or price' },
             { status: 400 }
           );
         }
