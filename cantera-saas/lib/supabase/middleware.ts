@@ -12,58 +12,10 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // Para la landing page (/), verificar si hay usuario autenticado
-  // Si hay usuario, redirigir a dashboard, sino permitir acceso
+  // Para la landing page (/), SIEMPRE permitir acceso inmediatamente sin hacer nada
+  // NO verificar usuario aquí para evitar errores que causen 404
+  // La página misma puede manejar redirecciones si es necesario
   if (request.nextUrl.pathname === '/') {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    // Si faltan variables de entorno, permitir acceso a la landing page
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return supabaseResponse;
-    }
-    
-    // Intentar verificar si hay usuario autenticado
-    try {
-      const supabase = createServerClient<Database>(
-        supabaseUrl,
-        supabaseAnonKey,
-        {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                request.cookies.set(name, value)
-              );
-              supabaseResponse = NextResponse.next({
-                request,
-              });
-              cookiesToSet.forEach(({ name, value, options }) =>
-                supabaseResponse.cookies.set(name, value, options)
-              );
-            },
-          },
-        }
-      );
-      
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      
-      // Si hay usuario autenticado, redirigir a dashboard
-      if (user) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/dashboard';
-        return NextResponse.redirect(url);
-      }
-    } catch (error) {
-      // Si hay error, permitir acceso a la landing page
-      console.error('Error checking user in middleware for /:', error);
-    }
-    
-    // Si no hay usuario o hay error, permitir acceso a la landing page
     return supabaseResponse;
   }
 
