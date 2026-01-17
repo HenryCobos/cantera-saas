@@ -3,20 +3,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { Database } from './database.types';
 
 export async function updateSession(request: NextRequest) {
-  // Rutas completamente públicas que NO requieren ninguna verificación
-  // Estas rutas deben pasar directamente sin tocar Supabase
-  const publicRoutes = ['/', '/precios', '/auth/login', '/auth/register'];
+  // NOTA: Las rutas públicas (/, /precios, /auth/login, /auth/register) están
+  // excluidas del matcher del middleware, por lo que esta función solo se ejecuta
+  // para rutas protegidas que requieren autenticación.
+  
   const pathname = request.nextUrl.pathname;
-  const isPublicRoute = publicRoutes.includes(pathname);
-
-  // Para rutas públicas, especialmente la landing page (/), 
-  // retornar inmediatamente sin hacer NADA con Supabase
-  // Esto evita cualquier error que pueda causar 404
-  if (isPublicRoute) {
-    // Retornar NextResponse.next() directamente sin crear respuesta intermedia
-    // Pasando request explícitamente para asegurar compatibilidad
-    return NextResponse.next({ request });
-  }
 
   // Para rutas protegidas, verificar autenticación
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
