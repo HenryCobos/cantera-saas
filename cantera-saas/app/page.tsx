@@ -13,10 +13,19 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  } catch (error: any) {
+    // Si faltan variables de entorno, mostrar error pero permitir ver la landing
+    console.error('Error initializing Supabase:', error.message);
+    // Continuar sin redirigir si hay error de configuración
+  }
 
   // Si el usuario ya está logueado, redirigir al dashboard
   if (user) {
