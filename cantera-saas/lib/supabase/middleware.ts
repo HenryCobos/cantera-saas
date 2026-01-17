@@ -12,10 +12,9 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // Para rutas públicas, permitir acceso inmediatamente sin verificar Supabase
-  // Esto asegura que la landing page siempre funcione
-  if (isPublicRoute && request.nextUrl.pathname === '/') {
-    // Permitir acceso a la landing page sin verificar autenticación
+  // Para la landing page (/), SIEMPRE permitir acceso inmediatamente sin verificar nada
+  // Esto asegura que la landing page siempre funcione, incluso si hay errores
+  if (request.nextUrl.pathname === '/') {
     return supabaseResponse;
   }
 

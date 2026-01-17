@@ -11,10 +11,13 @@ import {
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 
+// Forzar renderizado dinámico para evitar problemas con cookies
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // Intentar verificar si hay usuario autenticado
-  // Pero no fallar si hay problemas con Supabase
-  let user = null;
+  // Pero SIEMPRE renderizar la página incluso si hay errores
+  let shouldRedirect = false;
   
   try {
     // Solo intentar verificar usuario si las variables de entorno existen
@@ -22,23 +25,38 @@ export default async function Home() {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     
     if (supabaseUrl && supabaseAnonKey) {
-      // Importación dinámica para evitar errores en build time
-      const { createClient } = await import('@/lib/supabase/server');
-      const supabase = await createClient();
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      user = authUser;
-      
-      // Si el usuario ya está logueado, redirigir al dashboard
-      if (user) {
-        redirect('/dashboard');
+      try {
+        // Importación dinámica para evitar errores en build time
+        const { createClient } = await import('@/lib/supabase/server');
+        const supabase = await createClient();
+        
+        try {
+          const {
+            data: { user: authUser },
+          } = await supabase.auth.getUser();
+          
+          // Si el usuario ya está logueado, marcar para redirigir
+          if (authUser) {
+            shouldRedirect = true;
+          }
+        } catch (authError) {
+          // Error al obtener usuario, continuar sin redirigir
+          console.error('Error getting user (non-blocking):', authError);
+        }
+      } catch (clientError) {
+        // Error al crear cliente, continuar sin redirigir
+        console.error('Error creating Supabase client (non-blocking):', clientError);
       }
     }
   } catch (error: any) {
     // Si hay cualquier error, simplemente continuar mostrando la landing page
     // Esto asegura que la página siempre se renderice incluso si hay problemas con Supabase
-    console.error('Error initializing Supabase:', error?.message || error);
+    console.error('Error in Home page (non-blocking):', error?.message || error);
+  }
+
+  // Si hay usuario, redirigir (solo si no hubo errores)
+  if (shouldRedirect) {
+    redirect('/dashboard');
   }
 
   const features = [
