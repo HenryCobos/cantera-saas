@@ -3,11 +3,16 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { Database } from './database.types';
 
 export async function updateSession(request: NextRequest) {
-  // NOTA: Las rutas públicas (/, /precios, /auth/login, /auth/register) están
-  // excluidas del matcher del middleware, por lo que esta función solo se ejecuta
-  // para rutas protegidas que requieren autenticación.
-  
   const pathname = request.nextUrl.pathname;
+  
+  // CRÍTICO: Rutas públicas deben retornar inmediatamente sin hacer NADA
+  // Esto es más confiable que confiar en el matcher regex
+  const publicRoutes = ['/', '/precios', '/auth/login', '/auth/register'];
+  if (publicRoutes.includes(pathname)) {
+    // Retornar NextResponse.next() inmediatamente para rutas públicas
+    // NO crear ningún cliente de Supabase ni hacer ninguna verificación
+    return NextResponse.next({ request });
+  }
 
   // Para rutas protegidas, verificar autenticación
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -82,14 +87,6 @@ export async function updateSession(request: NextRequest) {
   } catch (error) {
     // Si hay error al obtener el usuario, tratar como no autenticado
     user = undefined;
-  }
-
-  // Si está autenticado y está en /auth/login o /auth/register, redirigir al dashboard
-  // Esto evita que usuarios autenticados vean estas páginas
-  if (user && (pathname === '/auth/login' || pathname === '/auth/register')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
   }
 
   // Rutas protegidas - redirigir al login si no está autenticado
