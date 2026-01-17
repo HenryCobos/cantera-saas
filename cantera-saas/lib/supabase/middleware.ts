@@ -7,9 +7,17 @@ export async function updateSession(request: NextRequest) {
   const publicRoutes = ['/', '/precios', '/auth/login', '/auth/register'];
   const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname);
 
+  // Crear respuesta por defecto
   let supabaseResponse = NextResponse.next({
     request,
   });
+
+  // Para rutas públicas, permitir acceso inmediatamente sin verificar Supabase
+  // Esto asegura que la landing page siempre funcione
+  if (isPublicRoute && request.nextUrl.pathname === '/') {
+    // Permitir acceso a la landing page sin verificar autenticación
+    return supabaseResponse;
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -53,6 +61,7 @@ export async function updateSession(request: NextRequest) {
     );
   } catch (error) {
     // Si falla al crear el cliente, permitir acceso a rutas públicas
+    console.error('Error creating Supabase client in middleware:', error);
     if (isPublicRoute) {
       return supabaseResponse;
     }

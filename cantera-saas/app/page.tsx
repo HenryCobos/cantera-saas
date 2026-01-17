@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import {
   CheckCircleIcon,
   ChartBarIcon,
@@ -13,23 +12,33 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default async function Home() {
+  // Intentar verificar si hay usuario autenticado
+  // Pero no fallar si hay problemas con Supabase
   let user = null;
   
   try {
-    const supabase = await createClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    user = authUser;
+    // Solo intentar verificar usuario si las variables de entorno existen
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (supabaseUrl && supabaseAnonKey) {
+      // Importación dinámica para evitar errores en build time
+      const { createClient } = await import('@/lib/supabase/server');
+      const supabase = await createClient();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      user = authUser;
+      
+      // Si el usuario ya está logueado, redirigir al dashboard
+      if (user) {
+        redirect('/dashboard');
+      }
+    }
   } catch (error: any) {
-    // Si faltan variables de entorno, mostrar error pero permitir ver la landing
-    console.error('Error initializing Supabase:', error.message);
-    // Continuar sin redirigir si hay error de configuración
-  }
-
-  // Si el usuario ya está logueado, redirigir al dashboard
-  if (user) {
-    redirect('/dashboard');
+    // Si hay cualquier error, simplemente continuar mostrando la landing page
+    // Esto asegura que la página siempre se renderice incluso si hay problemas con Supabase
+    console.error('Error initializing Supabase:', error?.message || error);
   }
 
   const features = [
