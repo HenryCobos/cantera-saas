@@ -1,23 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Esta ruta requiere Service Role Key para crear usuarios
-// Agrega SUPABASE_SERVICE_ROLE_KEY a tus variables de entorno (.env.local)
+// Función helper para crear cliente admin (solo cuando se necesita - en runtime, no en build time)
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
 
-// Cliente con Service Role Key (privilegios elevados)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Crear cliente admin solo cuando se necesita (en runtime, no en build time)
+    const supabaseAdmin = getSupabaseAdmin();
+    
     // Verificar que Service Role Key esté configurada
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseServiceKey) {
       return NextResponse.json({ error: 'Service Role Key no configurada. Agrega SUPABASE_SERVICE_ROLE_KEY a .env.local' }, { status: 500 });
     }
