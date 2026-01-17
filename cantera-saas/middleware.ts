@@ -2,6 +2,13 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  // CRÍTICO: Verificar ANTES de cualquier otra cosa si es la ruta root
+  // Si es '/', retornar inmediatamente sin hacer nada más
+  const pathname = request.nextUrl.pathname;
+  if (pathname === '/') {
+    return NextResponse.next();
+  }
+
   // Wrapper con try-catch para asegurar que nunca falle silenciosamente
   try {
     return await updateSession(request);
