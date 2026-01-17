@@ -3,36 +3,36 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { Database } from './database.types';
 
 export async function updateSession(request: NextRequest) {
-  // Rutas públicas que no requieren autenticación
+  // Rutas completamente públicas que NO requieren ninguna verificación
+  // Estas rutas deben pasar directamente sin tocar Supabase
   const publicRoutes = ['/', '/precios', '/auth/login', '/auth/register'];
-  const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname);
+  const pathname = request.nextUrl.pathname;
+  const isPublicRoute = publicRoutes.includes(pathname);
 
-  // Crear respuesta por defecto
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
-
-  // Para la landing page (/), SIEMPRE permitir acceso inmediatamente sin hacer nada
-  // NO verificar usuario aquí para evitar errores que causen 404
-  // La página misma puede manejar redirecciones si es necesario
-  if (request.nextUrl.pathname === '/') {
-    return supabaseResponse;
+  // Para rutas públicas, especialmente la landing page (/), 
+  // retornar inmediatamente sin hacer NADA con Supabase
+  // Esto evita cualquier error que pueda causar 404
+  if (isPublicRoute) {
+    // Retornar NextResponse.next() directamente sin crear respuesta intermedia
+    // Pasando request explícitamente para asegurar compatibilidad
+    return NextResponse.next({ request });
   }
 
+  // Para rutas protegidas, verificar autenticación
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Si faltan variables de entorno, permitir acceso a rutas públicas sin autenticación
+  // Si faltan variables de entorno, redirigir rutas protegidas al login
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (isPublicRoute) {
-      return supabaseResponse;
-    }
-    
-    // Para rutas protegidas, redirigir al login
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
+
+  // Crear respuesta para manejar cookies de Supabase
+  let supabaseResponse = NextResponse.next({
+    request,
+  });
 
   // Manejar errores al crear el cliente de Supabase
   let supabase;
@@ -60,11 +60,8 @@ export async function updateSession(request: NextRequest) {
       }
     );
   } catch (error) {
-    // Si falla al crear el cliente, permitir acceso a rutas públicas
+    // Si falla al crear el cliente, redirigir al login
     console.error('Error creating Supabase client in middleware:', error);
-    if (isPublicRoute) {
-      return supabaseResponse;
-    }
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
@@ -98,15 +95,10 @@ export async function updateSession(request: NextRequest) {
 
   // Si está autenticado y está en /auth/login o /auth/register, redirigir al dashboard
   // Esto evita que usuarios autenticados vean estas páginas
-  if (user && (request.nextUrl.pathname === '/auth/login' || request.nextUrl.pathname === '/auth/register')) {
+  if (user && (pathname === '/auth/login' || pathname === '/auth/register')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
-  }
-
-  // Permitir acceso a rutas públicas siempre
-  if (isPublicRoute) {
-    return supabaseResponse;
   }
 
   // Rutas protegidas - redirigir al login si no está autenticado
