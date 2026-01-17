@@ -22,16 +22,16 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * CRÍTICO: El matcher usa .+ (no .*) para requerir al menos 1 carácter después de /
-     * Esto excluye automáticamente la ruta '/' (root) del middleware
-     * Match all request paths except for:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - root path '/' (automáticamente excluido por .+)
-     * - static files (images, etc.)
+     * SOLUCIÓN DEFINITIVA: Solo interceptar rutas protegidas que requieren autenticación
+     * Esto EXCLUYE automáticamente:
+     * - / (landing page)
+     * - /precios
+     * - /auth/login
+     * - /auth/register
+     * - Todas las rutas estáticas
+     * - Rutas API (pueden tener su propia autenticación)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).+)',
+    '/dashboard/:path*',
   ],
 };
 
