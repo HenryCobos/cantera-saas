@@ -7,9 +7,27 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Si faltan variables de entorno, permitir acceso a rutas públicas sin autenticación
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const publicRoutes = ['/', '/precios', '/auth/login', '/auth/register'];
+    const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname);
+    
+    if (isPublicRoute) {
+      return supabaseResponse;
+    }
+    
+    // Para rutas protegidas, redirigir al login
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    return NextResponse.redirect(url);
+  }
+
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
